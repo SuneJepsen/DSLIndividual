@@ -26,6 +26,9 @@ import com.metagamedsl.individual.metaGameLanguage.Parenthesis
 import com.metagamedsl.individual.metaGameLanguage.LocalVariable
 import com.metagamedsl.individual.metaGameLanguage.Variable
 import java.util.regex.Pattern
+import java.util.Map
+import java.util.LinkedList
+import java.util.HashMap
 
 /**
  * This class contains custom validation rules. 
@@ -56,7 +59,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 						game.getDeclarations.get(g).validateFieldProperty(localVariable)
 						
 					}// End for # 0 				
-					System.out.println(vars.get(i));	
+						
 				}
 			} // End for # 2
 		}// End for # 1 
@@ -89,7 +92,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 							for(var g = 0; g < game.getDeclarations.length; g++){// Start for # 4 
 								game.getDeclarations.get(g).validateFieldProperty(localVariable)								
 							}// End for # 4 				
-							System.out.println(vars.get(i));	
+								
 						}
 					} // End for # 3			
 				}
@@ -100,11 +103,11 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	def dispatch void validateFieldProperty(Object object, LocalVariable localVariable){
 		 try {
 	   
-			var objectName = localVariable.var_local
-			var propertyName = localVariable.var_prop.name
+			var objectName = localVariable.var_local // Agent1
+			var propertyName = localVariable.var_prop.name // isAgent
 			// Loop over all object names on object
 			for(var x = 0; x < object.declarations.length; x++){// Start for # 1
-				System.out.println("1")
+				
 				
 				// Check if there is a match
 				if(object.declarations.get(x).name == objectName){			
@@ -115,7 +118,6 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 						}
 					} // End for # 2
 					if(!match){
-						System.out.println("Validation failed on " + objectName + "." + propertyName)
 						error("Object does not have property "+  propertyName,localVariable  ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_LOCAL);
 						error("Property do not exist on object "+ objectName + "." + propertyName,localVariable  ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);					
 					}
@@ -192,7 +194,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				}else{
 					propertyList.add(object.properties.get(y).name);
 				}
-				System.out.println("x: BoolExp " + object.properties.get(y).name);
+				
 			}else if (object.properties.get(y) instanceof NumberExp){
 				if(propertyList.contains(object.properties.get(y).name)){
 					error("Property " + (object.properties.get(y) as NumberExp).name + " already exist on object ", (object.properties.get(y) as NumberExp) ,MetaGameLanguagePackage.eINSTANCE.numberExp_Math_exp);
@@ -201,7 +203,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				}else{
 					propertyList.add(object.properties.get(y).name);
 				}				
-				System.out.println("x: NumberExp "+ object.properties.get(y).name);
+				
 			}
 		}	
 	}
@@ -216,7 +218,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				}else{
 					propertyList.add(location.properties.get(y).name);
 				}
-				System.out.println("x: BoolExp " + location.properties.get(y).name);
+				
 			}else if (location.properties.get(y) instanceof NumberExp){
 				if(propertyList.contains(location.properties.get(y).name)){
 					error("Property " + (location.properties.get(y) as NumberExp).name + " already exist on location ", (location.properties.get(y) as NumberExp) ,MetaGameLanguagePackage.eINSTANCE.numberExp_Math_exp);
@@ -226,7 +228,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				}else{
 					propertyList.add(location.properties.get(y).name);
 				}				
-				System.out.println("x: NumberExp "+ location.properties.get(y).name);
+				
 			}
 		}
 	}
@@ -260,7 +262,31 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		}// End for # 1  
 	}
 	
-	
+	/*
+	 *	 
+	 */
+	 @Check
+	def checkCircularReferencesOnFields(Game game){
+		 var Map<Integer,LinkedList<String>> map = new HashMap<Integer,LinkedList<String>>();
+		
+		// Loop all game properties
+		for(var y = 0; y < game.fields.length; y++){// Start for # 1 
+			// Get property variables e.g Agent1.score, Agent2.score
+			var vars = game.fields.get(y).getVariables
+			// Loop through the found property variables
+			for(var i = 0; i < vars.length; i++){// Start for # 2 
+				if(vars.get(i) instanceof LocalVariable){
+					var localVariable = vars.get(i) as LocalVariable
+					// Do a look to see if the property exist on object
+					System.out.println(localVariable.var_local);	// Agent1			
+					System.out.println(localVariable.var_prop.name); // path		
+				}
+			} // End for # 2
+			
+			
+			System.out.println(game.fields.get(y).name);
+		}// End for # 1 
+	}
 	
 	
 	//@Check
