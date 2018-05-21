@@ -232,9 +232,6 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	}
 	
 	
-
-	
-	
 	/*
 	 * E.g.: Object Agent1 (0,0) Agent1(1,0)   
 			    truth value isAgent = true    
