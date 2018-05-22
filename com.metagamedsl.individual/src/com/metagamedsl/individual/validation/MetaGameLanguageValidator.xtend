@@ -29,12 +29,28 @@ import java.util.regex.Pattern
 import java.util.Map
 import java.util.LinkedList
 import java.util.HashMap
+import com.metagamedsl.individual.metaGameLanguage.ObjectDeclaration
+import com.metagamedsl.individual.metaGameLanguage.LocationDeclaration
 
 /**
  * This class contains custom validation rules. 
  *
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
+ 
+	class GraphNode {
+
+        private String name;
+  
+
+        new (String name) {
+            this.name = name;
+
+        }
+
+
+    } 
+ 
 class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	
 		
@@ -64,6 +80,20 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 			} // End for # 2
 		}// End for # 1 
 	}
+		/*
+	 * number test = Agent1.path   
+	 * 
+	 * Validate on global properties
+	 * Agent1 should exist
+	 */
+	@Check
+	def checkGameFieldObjectExist(Game game){
+ 
+	}
+	
+	
+	
+	
 	
 	/*
  	* 	Object Agent1 (0,0) Agent2(1,0)   
@@ -104,32 +134,35 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		 try {
 	   
 			var objectName = localVariable.var_local // Agent1
-			var propertyName = localVariable.var_prop.name // isAgent
+			var propertyName = localVariable.var_prop.name // isAgent			
+			
 			// Loop over all object names on object
+			var match = false
 			for(var x = 0; x < object.declarations.length; x++){// Start for # 1
 				
-				
+							
 				// Check if there is a match
-				if(object.declarations.get(x).name == objectName){			
-					var match = false
+				if(object.declarations.get(x).name == objectName){		
+					
 					for(var y = 0; y < object.properties.length; y++){// Start for # 2	
 						if(object.properties.get(y).name == propertyName){
 							match = true	
 						}
 					} // End for # 2
 					if(!match){
-						error("Object does not have property "+  propertyName,localVariable  ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_LOCAL);
+						error("Object does not have property "+  propertyName, localVariable  ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_LOCAL);
 						error("Property do not exist on object "+ objectName + "." + propertyName,localVariable  ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);					
 					}
 				}
 			}// End for # 1	
+	
 	 	} 
 	 	catch (IllegalArgumentException e) {
 	 		System.out.println(e);
 	    }
 	}
 	def dispatch void validateFieldProperty(Location object, LocalVariable localVariable){
-			System.out.println("validateFieldProperty2")	
+			//System.out.println("validateFieldProperty2")	
 	}
     def List<Expression> getVariables(Property p) {
     	switch p {
@@ -263,30 +296,301 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	}
 	
 	/*
-	 *	 
-	 */
-	 @Check
-	def checkCircularReferencesOnFields(Game game){
-		 var Map<Integer,LinkedList<String>> map = new HashMap<Integer,LinkedList<String>>();
+	* System.out.println(localVariable.var_local);	// Agent1			
+	* System.out.println(localVariable.var_prop.name); // path
+	* variable.var_prop.name // test
+	* 
+	* Loop through each entry, foreach entry (test,test2) check if has dependency to test
+	* If yes -> circular dependency
+	* 
+	* Global properties:
+	* test [test2, test3] 
+	* test2 []
+	* test3 [test]
+	* 
+	* Local properties 
+	*
+	*/
+	
 		
-		// Loop all game properties
-		for(var y = 0; y < game.fields.length; y++){// Start for # 1 
-			// Get property variables e.g Agent1.score, Agent2.score
-			var vars = game.fields.get(y).getVariables
-			// Loop through the found property variables
+    private Map<String, List<Expression>> graph =  new HashMap()
+      
+	 @Check
+	def checkCircularReferencesOnFields(Game game){		
+	
+		// Create graph of of all game field properties
+		for(var y = 0; y < game.fields.length; y++){		
+			var parentName = ""
+			if(game.fields.get(y) instanceof BoolExp){
+				parentName = (game.fields.get(y) as BoolExp).name				
+			}else{
+				parentName = (game.fields.get(y) as NumberExp).name				
+			}		
+			addNode(parentName)
+			
+			// Get property variables e.g test2, test3, test
+			/**
+			 * Game Validate    
+				number test = test2 + test3  
+				number test2 = 1
+				number test3 = test
+			 * 
+			 */
+			var vars = game.fields.get(y).getVariables			
+			
+			// add edge between parent properties
 			for(var i = 0; i < vars.length; i++){// Start for # 2 
-				if(vars.get(i) instanceof LocalVariable){
-					var localVariable = vars.get(i) as LocalVariable
-					// Do a look to see if the property exist on object
-					System.out.println(localVariable.var_local);	// Agent1			
-					System.out.println(localVariable.var_prop.name); // path		
+				addEdge(parentName, vars.get(i))
+			}			
+		}
+		
+		
+		// Add object and location properties to graph
+		for(Declaration declaration: game.declarations){// Start for # 1 		
+			if(declaration instanceof Object){ // Validate Objects properties
+				var object =declaration as Object				
+				for(Property property: object.properties){// Start for # 2	
+					var vars = property.getVariables
+					
+					var propertyName = ""
+					if(property instanceof BoolExp){
+						propertyName = (property as BoolExp).name				
+					}else{
+						propertyName = (property as NumberExp).name				
+					}
+					
+					// Add all parents
+					for(ObjectDeclaration od: object.declarations){
+						addNode(od.name+"."+propertyName)
+						System.out.println("Add parent: " + od.name+"."+propertyName); 
+					}
+					
+					// Foreach property, loop through its expression add edge on each expression on all object declarations					
+					for(Expression exp : vars){// Start for # 3 
+						
+						if(exp instanceof LocalVariable){ // local variable e.g. Agent1.score
+							var localVariable = exp as LocalVariable					
+							for(ObjectDeclaration od: object.declarations){ // Because of the grammar we need to run to all object declarations and add edge between the same expression
+								addEdge(od.name+"."+propertyName,  localVariable)
+								System.out.println("(1)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
+							}
+						} else if(exp instanceof Variable){ // global variable
+							var variable = exp as Variable	
+							for(ObjectDeclaration od: object.declarations){
+								addEdge(od.name+"."+propertyName,  variable)
+								System.out.println("(2)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + variable.var_prop.name); 
+							}
+						}				
+					} // End for # 3	
 				}
-			} // End for # 2
-			
-			
-			System.out.println(game.fields.get(y).name);
-		}// End for # 1 
+			}
+			else { // Validate Location properties
+				var location =declaration as Location	
+				for(Property property: location.properties){// Start for # 2	
+					var vars = property.getVariables
+					
+					var propertyName = ""
+					if(property instanceof BoolExp){
+						propertyName = (property as BoolExp).name				
+					}else{
+						propertyName = (property as NumberExp).name				
+					}
+					
+					// Add all parents
+					for(LocationDeclaration ld: location.declarations){
+						addNode(ld.name+"."+propertyName)
+						System.out.println("Add parent: " + ld.name+"."+propertyName); 
+					}
+					
+					// Foreach property, loop through its expression add edge on each expression on all location declarations					
+					for(Expression exp : vars){// Start for # 3 
+						
+						if(exp instanceof LocalVariable){ // local variable e.g. Agent1.score
+							var localVariable = exp as LocalVariable					
+							for(LocationDeclaration ld: location.declarations){
+								addEdge(ld.name+"."+propertyName,  localVariable)
+								System.out.println("(1)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
+							}
+						} else if(exp instanceof Variable){ // global variable
+							var variable = exp as Variable	
+							for(LocationDeclaration ld: location.declarations){
+								addEdge(ld.name+"."+propertyName,  variable)
+								System.out.println("(2)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + variable.var_prop.name); 
+							}
+						}				
+					} // End for # 3	
+				}
+			} // End if # 
+		}// End for # 1
+		
+		
+		var List<String> seen = new ArrayList();	
+		// Validate graph
+		for (Map.Entry<String, List<Expression>> entry : graph.entrySet())
+		{
+		    for(Expression child : entry.getValue()){
+		    	seen.add(entry.key)
+		    	validate(child, entry.key, seen)
+	    	}
+		}
 	}
+	
+	def boolean validate(Expression child, String parent, List<String> seen){
+		System.out.println("Start");
+		for(String se: seen){
+			System.out.println("seen contains " + se); 	
+		}
+		System.out.println("End");
+		
+		if(child instanceof LocalVariable){ // local variable e.g. Agent1.score
+			var childLocalVariable = child as LocalVariable					
+			var key = childLocalVariable.var_local +"."+ childLocalVariable.var_prop.name // E.g Agent1.score
+			if(graph.containsKey(key)){
+				// Get childs dependencies
+				var children = graph.get(key);
+				  // Loop over each expression to check if there are name Coalission
+				  
+				  if(children.size== 0) return true
+				  
+				  for(Expression exp : children){ 
+		  				if(exp instanceof LocalVariable){ // Local variable on a global variable
+							var localVariable = exp as LocalVariable
+							var localVariableKey =  localVariable.var_local +"." +localVariable.var_prop.name
+							
+							if(seen.contains(localVariableKey)){
+								error("Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
+								error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
+							}else{
+								seen.add(localVariableKey)
+								validate(exp,key,seen)
+							}
+						
+						}
+						else if(exp instanceof Variable){ // Global variable in "local variable" expression
+							var variable = exp as Variable
+							
+							if(seen.contains(variable.var_prop.name)){
+								System.out.println("Circular reference on " + parent); 	
+								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+							}else{
+								seen.add(variable.var_prop.name)
+								validate(exp,key,seen)
+							}
+							
+							
+						}
+				  }
+				  
+				  return true
+			}	
+				
+		}
+		else{ // global variable
+			var childVariable = child as Variable		
+			// Validate if check exist as an entry (todo: if not property doesent exist error)
+			if(graph.containsKey(childVariable.var_prop.name)){
+				// Get childs dependencies
+				var children = graph.get(childVariable.var_prop.name);
+				
+				if(children.size== 0) return true
+				
+				  // Loop over each expression to check if there are name Coalission
+				  for(Expression exp : children){ 
+		  				if(exp instanceof LocalVariable){ // Local variable on a global variable e.g. number test = Agent1.score + 1
+							var localVariable = exp as LocalVariable
+								
+						}
+						if(exp instanceof Variable){ // Global variable on global variable
+							var variable = exp as Variable
+							
+							if(seen.contains(variable.var_prop.name)){
+								System.out.println("Circular reference on " + parent); 	
+								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+							}else{
+								seen.add(variable.var_prop.name)
+								validate(exp,childVariable.var_prop.name,seen)
+							}						
+							
+						}
+				  }
+				  return true
+			}
+		}
+		return true
+	}
+	
+	def void validate(Expression child, String parent){
+		if(child instanceof LocalVariable){ // local variable e.g. Agent1.score
+			var childLocalVariable = child as LocalVariable					
+			var key = childLocalVariable.var_local +"."+ childLocalVariable.var_prop.name // E.g Agent1.score
+			if(graph.containsKey(key)){
+				// Get childs dependencies
+				var children = graph.get(key);
+				  // Loop over each expression to check if there are name Coalission
+				  for(Expression exp : children){ 
+		  				if(exp instanceof LocalVariable){ // Local variable on a global variable
+							var localVariable = exp as LocalVariable
+							var localVariableKey =  localVariable.var_local +"." +localVariable.var_prop.name
+							if( localVariableKey == parent){
+								System.out.println("Circular reference on " + parent); 	
+								error("Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
+								error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
+							}			
+						}
+						if(exp instanceof Variable){ // Global variable in "local variable" expression
+							var variable = exp as Variable
+							if(variable.var_prop.name == parent){
+								System.out.println("Circular reference on " + parent); 	
+								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+							}		
+						}
+				  }
+			}	
+				
+		}
+		else{ // global variable
+			var childVariable = child as Variable		
+			// Validate if check exist as an entry (todo: if not property doesent exist error)
+			if(graph.containsKey(childVariable.var_prop.name)){
+				// Get childs dependencies
+				var children = graph.get(childVariable.var_prop.name);
+				  // Loop over each expression to check if there are name Coalission
+				  for(Expression exp : children){ 
+		  				if(exp instanceof LocalVariable){ // Local variable on a global variable e.g. number test = Agent1.score + 1
+							var localVariable = exp as LocalVariable
+								
+						}
+						if(exp instanceof Variable){ // Global variable on global variable
+							var variable = exp as Variable
+							if(variable.var_prop.name == parent){
+								System.out.println("Circular reference on " + parent); 	
+								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+							}		
+						}
+				  }
+			}
+		}	
+		
+	} 
+	
+    def void addNode(String name) {
+       
+        var List<Expression> list = new LinkedList<Expression>();
+        graph.put(name, list);
+    }
+
+    def void addEdge(String parent, Expression child) throws Exception {
+        var List<Expression> list;
+        if (!graph.containsKey(parent)) {
+        	//System.out.println("new list to node: " + parent);
+            list = new LinkedList<Expression>();
+        } else {
+            list = graph.get(parent);
+        }
+        list.add(child);
+        graph.put(parent, list);
+    }
+	
 	
 	
 	//@Check
