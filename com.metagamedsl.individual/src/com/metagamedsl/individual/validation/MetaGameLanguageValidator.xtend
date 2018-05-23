@@ -362,7 +362,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 					// Add all parents
 					for(ObjectDeclaration od: object.declarations){
 						addNode(od.name+"."+propertyName)
-						System.out.println("Add parent: " + od.name+"."+propertyName); 
+						//System.out.println("Add parent: " + od.name+"."+propertyName); 
 					}
 					
 					// Foreach property, loop through its expression add edge on each expression on all object declarations					
@@ -372,13 +372,13 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 							var localVariable = exp as LocalVariable					
 							for(ObjectDeclaration od: object.declarations){ // Because of the grammar we need to run to all object declarations and add edge between the same expression
 								addEdge(od.name+"."+propertyName,  localVariable)
-								System.out.println("(1)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
+								//System.out.println("(1)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
 							}
 						} else if(exp instanceof Variable){ // global variable
 							var variable = exp as Variable	
 							for(ObjectDeclaration od: object.declarations){
 								addEdge(od.name+"."+propertyName,  variable)
-								System.out.println("(2)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + variable.var_prop.name); 
+								//System.out.println("(2)Add childs to each parent: " + od.name+"."+propertyName + " Child:" + variable.var_prop.name); 
 							}
 						}				
 					} // End for # 3	
@@ -399,7 +399,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 					// Add all parents
 					for(LocationDeclaration ld: location.declarations){
 						addNode(ld.name+"."+propertyName)
-						System.out.println("Add parent: " + ld.name+"."+propertyName); 
+						//System.out.println("Add parent: " + ld.name+"."+propertyName); 
 					}
 					
 					// Foreach property, loop through its expression add edge on each expression on all location declarations					
@@ -409,13 +409,13 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 							var localVariable = exp as LocalVariable					
 							for(LocationDeclaration ld: location.declarations){
 								addEdge(ld.name+"."+propertyName,  localVariable)
-								System.out.println("(1)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
+								//System.out.println("(1)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + localVariable.var_local +"."+ localVariable.var_prop.name); 
 							}
 						} else if(exp instanceof Variable){ // global variable
 							var variable = exp as Variable	
 							for(LocationDeclaration ld: location.declarations){
 								addEdge(ld.name+"."+propertyName,  variable)
-								System.out.println("(2)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + variable.var_prop.name); 
+								//System.out.println("(2)Add childs to each parent: " + ld.name+"."+propertyName + " Child:" + variable.var_prop.name); 
 							}
 						}				
 					} // End for # 3	
@@ -426,43 +426,90 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		
 		var List<String> seen = new ArrayList();	
 		// Validate graph
+		//System.out.println("Print graph start"); 
 		for (Map.Entry<String, List<Expression>> entry : graph.entrySet())
 		{
+			var children = ""
 		    for(Expression child : entry.getValue()){
-		    	seen.add(entry.key)
+	    		if(child instanceof LocalVariable){ // local variable e.g. Agent1.score
+	    			var localVariable = child as LocalVariable
+	    			children += localVariable.var_local +"."+ localVariable.var_prop.name +", "		
+	    		}
+	    		else
+	    		{
+	    			var variable = child as Variable	
+	    			children += variable.var_prop.name +", "
+	    		}
+	    		
+	    		
+	    		
+		    	System.out.println("Outer method, Parent: " + entry.key); 
+				System.out.println("Outer method, Child: " + children);		    	
+		    	//seen.add(entry.key)
 		    	validate(child, entry.key, seen)
+		    	seen = new ArrayList() // List to be cleared every time a new recursion is executed
 	    	}
+	    	//System.out.println(entry.key +": "+ children);
 		}
+		//System.out.println("End graph start"); 
 	}
 	
+	// List which is needed to keep track of which elements errors already has been thrown
+	// List should avoid to that multiple errors are thrown on same elements
+	// Agent1.path : Agent3.path
+	// Agent2.path : Agent3.path
+	// Agent3.path : Agent2.path
+	private List<String> errorThrownOnThisEpression =  new ArrayList()
 	def boolean validate(Expression child, String parent, List<String> seen){
-		System.out.println("Start");
+		
+    	System.out.println("validate method called with parent: " + parent); 
+		//System.out.println("Child: " + (child as Variable).var_prop.name);	
+			
+		var seenString = ""
 		for(String se: seen){
-			System.out.println("seen contains " + se); 	
+			seenString += se + ", " 	
 		}
-		System.out.println("End");
+		System.out.println("Seen list contains: " + seenString)
 		
 		if(child instanceof LocalVariable){ // local variable e.g. Agent1.score
 			var childLocalVariable = child as LocalVariable					
 			var key = childLocalVariable.var_local +"."+ childLocalVariable.var_prop.name // E.g Agent1.score
 			if(graph.containsKey(key)){
 				// Get childs dependencies
-				var children = graph.get(key);
+				var children = graph.get(key); // Agent3.path
 				  // Loop over each expression to check if there are name Coalission
-				  
-				  if(children.size== 0) return true
-				  
-				  for(Expression exp : children){ 
+				  	
+				  				  	
+					for(Expression exp : children){ 
 		  				if(exp instanceof LocalVariable){ // Local variable on a global variable
 							var localVariable = exp as LocalVariable
-							var localVariableKey =  localVariable.var_local +"." +localVariable.var_prop.name
+							var localVariableKey =  localVariable.var_local +"." +localVariable.var_prop.name // Agent2.path
 							
 							if(seen.contains(localVariableKey)){
-								error("Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
-								error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
+								if(!errorThrownOnThisEpression.contains(localVariableKey)){
+									System.out.println("1: validation failed " +localVariableKey )
+									error("1: Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
+									//error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
+									return false
+								}
+								else{
+									errorThrownOnThisEpression.add(localVariableKey)
+								}
+						
 							}else{
+								System.out.println("Add to seen list: " + localVariableKey)
 								seen.add(localVariableKey)
-								validate(exp,key,seen)
+								if(!validate(exp,key,seen)){
+									System.out.println("2: validation failed " +localVariableKey )
+									if(!errorThrownOnThisEpression.contains(localVariableKey)){
+										error("2: Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
+										//error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
+										return false
+									}
+									else{
+										errorThrownOnThisEpression.add(localVariableKey)
+									}
+								}
 							}
 						
 						}
@@ -472,9 +519,14 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 							if(seen.contains(variable.var_prop.name)){
 								System.out.println("Circular reference on " + parent); 	
 								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+								return false
 							}else{
+								System.out.println("seen.add(variable.var_prop.name " + variable.var_prop.name);
+								System.out.println("!validate(exp,key,seen) " + (exp as Variable).var_prop.name + " " +key); 
 								seen.add(variable.var_prop.name)
-								validate(exp,key,seen)
+								if(!validate(exp,key,seen)){
+									error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+								}
 							}
 							
 							
@@ -492,6 +544,8 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				// Get childs dependencies
 				var children = graph.get(childVariable.var_prop.name);
 				
+				System.out.println("children.size " + children.size); 	
+				
 				if(children.size== 0) return true
 				
 				  // Loop over each expression to check if there are name Coalission
@@ -504,11 +558,16 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 							var variable = exp as Variable
 							
 							if(seen.contains(variable.var_prop.name)){
-								System.out.println("Circular reference on " + parent); 	
+					     		System.out.println("Circular reference on " + parent); 	
 								error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+								return false
 							}else{
+								System.out.println("variable.var_prop.name " + variable.var_prop.name); 
 								seen.add(variable.var_prop.name)
-								validate(exp,childVariable.var_prop.name,seen)
+								if(!validate(exp,childVariable.var_prop.name,seen)){
+									System.out.println("validation failed on " +childVariable.var_prop.name+ " .... variable.var_prop.name " + variable.var_prop.name); 
+									error("Circular reference on " + parent, variable ,MetaGameLanguagePackage.Literals.VARIABLE__VAR_PROP);
+								}
 							}						
 							
 						}
@@ -589,6 +648,11 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
         }
         list.add(child);
         graph.put(parent, list);
+        
+        
+        
+        
+        
     }
 	
 	
