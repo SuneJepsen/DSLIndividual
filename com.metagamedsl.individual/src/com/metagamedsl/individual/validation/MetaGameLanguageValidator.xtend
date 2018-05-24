@@ -89,9 +89,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	@Check
 	def checkGameFieldObjectExist(Game game){
  
-	}
-	
-	
+	}	
 	
 	
 	
@@ -320,7 +318,13 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	
 		// Create graph of of all game field properties
 		for(var y = 0; y < game.fields.length; y++){		
-			var parentName = ""
+			var parentName = ""			
+			switch game.fields.get(y) {
+				BoolExp: parentName = game.fields.get(y).name
+				NumberExp:  parentName = game.fields.get(y).name
+				default: throw new Error("Invalid expression")
+			}			
+			
 			if(game.fields.get(y) instanceof BoolExp){
 				parentName = (game.fields.get(y) as BoolExp).name				
 			}else{
@@ -447,7 +451,8 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 				System.out.println("Outer method, Child: " + children);		    	
 		    	//seen.add(entry.key)
 		    	validate(child, entry.key, seen)
-		    	seen = new ArrayList() // List to be cleared every time a new recursion is executed
+		    	seen = new ArrayList() // List to be cleared every time a new recursion 
+		    	//errorThrownOnThisEpression = new ArrayList();
 	    	}
 	    	//System.out.println(entry.key +": "+ children);
 		}
@@ -502,7 +507,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 								if(!validate(exp,key,seen)){
 									System.out.println("2: validation failed " +localVariableKey )
 									if(!errorThrownOnThisEpression.contains(localVariableKey)){
-										error("2: Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
+										//error("2: Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
 										//error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
 										return false
 									}
