@@ -84,21 +84,12 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * 
 	 */
 	@Check
-	def validateObjectProperty(Game game) {
+	def validateObjectLocationProperty(Game game) {
 		// Loop all game properties
-		for (Declaration declaration : game.declarations) {
-			switch declaration {
-				Object: {
-					for (Property property : declaration.properties) {
-						property.validateObjectProperty(game, "validateObjectProperty")
-					}
-				}
-				Location: {
-				}
-				default:
-					throw new Error("Invalid expression in method validateObjectProperty")
+		for (Declaration declaration : game.declarations) {			
+			for (Property property : declaration.properties) {
+				property.validateObjectProperty(game, "validateObjectProperty")
 			}
-
 		}
 	}
 	
@@ -115,21 +106,12 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * 
 	 */
 	@Check
-	def validateObjectLocationNameShouldExistOnLocalVariable(Game game) {
+	def validateObjectLocationName(Game game) {
 		// Loop all game properties
 		for (Declaration declaration : game.declarations) {
-			switch declaration {
-				Object: {
-					for (Property property : declaration.properties) {
-						property.validateObjectLocationName(game, "validateObjectLocationNameShouldExistOnLocalVariable")
-					}
-				}
-				Location: {
-				}
-				default:
-					throw new Error("Invalid expression in method validateObjectLocationNameShouldExistOnLocalVariable")
+			for (Property property : declaration.properties) {
+					property.validateObjectLocationName(game, "validateObjectLocationNameShouldExistOnLocalVariable")
 			}
-
 		}
 	}
 	
@@ -142,8 +124,9 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * 
 	 */
 	@Check
-	def validateConflictObjectNames(Game game) {
-		var List<String> seenObjectList = new ArrayList();
+	def validateDuplicateObjectLocationNames(Game game) {
+		var List<String> seenObjectList = new ArrayList()
+		var List<String> seenLocationList = new ArrayList()
 		for (Declaration declaration : game.getDeclarations) {
 			switch declaration {
 				Object: {
@@ -157,6 +140,14 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 					}
 				}
 				Location: {
+					for (LocationDeclaration locationDeclaration: declaration.declarations) {
+						if (seenLocationList.contains(locationDeclaration.name)) {
+							error("Location " + locationDeclaration.name + " is a duplicate ", locationDeclaration,
+								MetaGameLanguagePackage.Literals.LOCATION_DECLARATION__NAME);
+						} else {
+							seenLocationList.add(locationDeclaration.name)
+						}
+					}
 				}
 				default:
 					throw new Error("Invalid expression in method chekObjectProperty")
@@ -173,11 +164,33 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * Two properties with same name should not be allowed
 	 */
 	@Check
-	def validateConflictProperty(Game game) {
+	def validateDuplicateProperty(Game game) {
 		for (Declaration declaration : game.getDeclarations) {
 			declaration.validateProperty;
 		}
 	}
+
+
+	/*
+	 * Steps in the procedure:
+	 * Check if the child is a LocalVariable or a Variable
+	 * If LocalVariable -> Get all expression for that child
+	 * 	Loop through all of the expression for that child
+	 * 	Check if each of the expressions is a LocalVariable or a Variable
+	 *  If LocaleVariable -> If seen "before" then throw error 
+	 * 				  -> If not add to seen list and do call itself (child=expression, parent=child)
+	 *  If Variable -> If seen "before" then throw error 
+	 * 				-> If not add to seen list and do call itself (child=expression, parent=child)
+	 * 
+	 * 
+	 * If Variable -> Get all expression for that child
+	 * 	Loop through all of the expression for that child
+	 * 	Check if each of the expressions is a LocalVariable or a Variable
+	 * If LocaleVariable -> If seen "before" then throw error 
+	 * 				  -> If not add to seen list and do call itself (child=expression, parent=child)
+	 *  If Variable -> If seen "before" then throw error 
+	 * 				-> If not add to seen list and do call itself (child=expression, parent=child)
+	 */
 
 	/*
 	 * System.out.println(localVariable.var_local);	// Agent1			
@@ -198,7 +211,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	private Map<String, List<Expression>> graph = new HashMap()
 
 	@Check
-	def checkCircularReferences(Game game) {
+	def validateCircularReferences(Game game) {
 
 		// Create graph of of all game field properties
 		for (Property property : game.fields) {
@@ -253,26 +266,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	// System.out.println("End graph start"); 
 	}
 
-	/*
-	 * Steps in the procedure:
-	 * Check if the child is a LocalVariable or a Variable
-	 * If LocalVariable -> Get all expression for that child
-	 * 	Loop through all of the expression for that child
-	 * 	Check if each of the expressions is a LocalVariable or a Variable
-	 *  If LocaleVariable -> If seen "before" then throw error 
-	 * 				  -> If not add to seen list and do call itself (child=expression, parent=child)
-	 *  If Variable -> If seen "before" then throw error 
-	 * 				-> If not add to seen list and do call itself (child=expression, parent=child)
-	 * 
-	 * 
-	 * If Variable -> Get all expression for that child
-	 * 	Loop through all of the expression for that child
-	 * 	Check if each of the expressions is a LocalVariable or a Variable
-	 * If LocaleVariable -> If seen "before" then throw error 
-	 * 				  -> If not add to seen list and do call itself (child=expression, parent=child)
-	 *  If Variable -> If seen "before" then throw error 
-	 * 				-> If not add to seen list and do call itself (child=expression, parent=child)
-	 */
+
 	// List which is needed to keep track of which elements errors already has been thrown
 	// List should avoid to that multiple errors are thrown on same elements
 	// Agent1.path : Agent3.path
@@ -360,8 +354,25 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 
 	}
 
-	def dispatch void validateFieldProperty(Location object, LocalVariable localVariable) {
-		// System.out.println("validateFieldProperty2")	
+	def dispatch void validateFieldProperty(Location location, LocalVariable localVariable) {
+		var locationName = localVariable.var_local // Agent1
+		var propertyName = localVariable.var_prop.name // isAgent	
+		// Loop over all object names on object
+		var matchPropertyName = false
+		for (LocationDeclaration locationDeclaration: location.declarations) {
+			// Check if there is a match
+			if (locationDeclaration.name == locationName) {
+				for (Property property : location.properties) {
+					if (property.name == propertyName) {
+						matchPropertyName = true
+					}
+				}
+				if (!matchPropertyName) {
+					error("Property do not exist on location " + locationName+ "." + propertyName, localVariable,
+						MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);
+				}
+			}
+		}
 	}
 	
 
@@ -500,7 +511,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 						}
 					}
 					if (!matchObjectName) {						
-						error("Object do not exist " + expression.var_local, expression,
+						error(expression.var_local +" do not exist", expression,
 							MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
 					}
 				}
