@@ -279,10 +279,8 @@ public class «game.name» extends FluentMachine {
 				Objdec: names.add("model.getObject(\""+arg.objdec.name+"\")")
 				Locdec: names.add("model.getLocation(\""+arg.locdec.name+"\")")
 			}
-		}
-		
-		'''«IF f.not !== null»!«ENDIF»_iInternalFunction.«f.internal_name»(«FOR arg:names SEPARATOR ', '»«arg»«ENDFOR»);'''
-		//'''«IF f.not !== null»!«ENDIF» _iInternalFunction.«f.internal_name»(«FOR arg:f.arguments?.arguments SEPARATOR ', '»«arg.generateArgName»«ENDFOR»);'''
+		}		
+		'''«IF f.not !== null»!«ENDIF»_iInternalFunction.«f.internal_name»(«FOR arg:names SEPARATOR ', '»«arg»«ENDFOR»);'''		
 	}
 		
 

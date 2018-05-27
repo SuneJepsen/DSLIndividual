@@ -45,13 +45,28 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * 
 	 * Validate on global properties
 	 * "path" property should then exist on Agent1 else fail
+	 * 
+	 * Method: validateObjectLocationProperty
+	 * 
 	 */
+	 
+ 	/*
+	 * number test = Agent1.path   
+	 * 
+	 * Validate on global properties
+	 * Agent1 should exist
+	 * 
+	 * Method: validateObjectLocationName
+	 * 
+	 */
+	 
 	@Check
-	def validateGameFieldObjectProperty(Game game) {
+	def validateGameFieldObjectLocationProperty(Game game) {
 		// Loop all game properties
 		for (Property property : game.fields) {
 			// Get property variables e.g Agent1.score, Agent2.score
-			property.validateObjectProperty(game, "validateGameFieldObjectProperty")
+			property.validateObjectLocationProperty(game, "validateGameFieldObjectProperty")
+			//property.validateObjectLocationName(game, "validateGameFieldObjectProperty")
 		}
 	}
 
@@ -68,8 +83,19 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 			property.validateObjectLocationName(game, "validateGameFieldObjectProperty")
 		}
 	}
+	/*
+	 * Game Labyrint   
+	 *	
+	 *	number maxPathLength = 11
+	 *	number maxPathLength = 11
+	 *	number maxPathLength = 11
+	 * 
+	 * Fields names should be unique 
+	 */
+	@Check
+	def validateDuplicateGameField(Game game) {
 	
-
+	}
 
 	/*
 	 * 	Object Agent1 (0,0) Agent2(1,0)   
@@ -88,7 +114,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		// Loop all game properties
 		for (Declaration declaration : game.declarations) {			
 			for (Property property : declaration.properties) {
-				property.validateObjectProperty(game, "validateObjectProperty")
+				property.validateObjectLocationProperty(game, "validateObjectProperty")
 			}
 		}
 	}
@@ -212,7 +238,9 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 
 	@Check
 	def validateCircularReferences(Game game) {
-
+		// Clear graph
+		graph = new HashMap()
+		
 		// Create graph of of all game field properties
 		for (Property property : game.fields) {
 			var parentName = getPropertyName(property)
@@ -255,13 +283,14 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 					children += variable.var_prop.name + ", "
 				}
 
-				// System.out.println("Outer method, Parent: " + entry.key); 
-				// System.out.println("Outer method, Child: " + children);		    	
+				System.out.println("Outer method, Parent: " + entry.key); 
+				System.out.println("Outer method, Child: " + children);	
+				seen.add(entry.key)	    	
 				validate(child, entry.key, seen)
 				seen = new ArrayList() // List to be cleared every time a new recursion 
-				// errorThrownOnThisEpression = new ArrayList();
+				errorThrownOnThisEpression = new ArrayList();
 			}
-		// System.out.println(entry.key +": "+ children);
+		 //System.out.println(entry.key +": "+ children);
 		}
 	// System.out.println("End graph start"); 
 	}
@@ -281,7 +310,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		for (String se : seen) {
 			seenString += se + ", "
 		}
-		// System.out.println("Seen list contains: " + seenString)
+		 System.out.println("Seen list contains: " + seenString)
 		switch child {
 			LocalVariable: {
 				// local variable e.g. Agent1.score					
@@ -335,44 +364,60 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	def dispatch void validateFieldProperty(Object object, LocalVariable localVariable) {
 		var objectName = localVariable.var_local // Agent1
 		var propertyName = localVariable.var_prop.name // isAgent	
-		// Loop over all object names on object
-		var matchPropertyName = false
-		for (ObjectDeclaration objectDeclaration : object.declarations) {
-			// Check if there is a match
-			if (objectDeclaration.name == objectName) {
-				for (Property property : object.properties) {
-					if (property.name == propertyName) {
-						matchPropertyName = true
-					}
-				}
-				if (!matchPropertyName) {
-					error("Property do not exist on object " + objectName + "." + propertyName, localVariable,
+		
+		if(propertyName == null){
+			error("Property do not exist on object " + objectName, localVariable,
 						MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);
+		}else{
+			// Loop over all object names on object
+			var matchPropertyName = false
+			for (ObjectDeclaration objectDeclaration : object.declarations) {
+				// Check if there is a match
+				if (objectDeclaration.name == objectName) {
+					for (Property property : object.properties) {
+						if (property.name == propertyName) {
+							matchPropertyName = true
+						}
+					}
+					if (!matchPropertyName) {
+						error("Property do not exist on object " + objectName, localVariable,
+							MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);
+					}
 				}
 			}
 		}
+		
+
 
 	}
 
 	def dispatch void validateFieldProperty(Location location, LocalVariable localVariable) {
 		var locationName = localVariable.var_local // Agent1
 		var propertyName = localVariable.var_prop.name // isAgent	
-		// Loop over all object names on object
-		var matchPropertyName = false
-		for (LocationDeclaration locationDeclaration: location.declarations) {
-			// Check if there is a match
-			if (locationDeclaration.name == locationName) {
-				for (Property property : location.properties) {
-					if (property.name == propertyName) {
-						matchPropertyName = true
-					}
-				}
-				if (!matchPropertyName) {
-					error("Property do not exist on location " + locationName+ "." + propertyName, localVariable,
+		
+		if(propertyName == null){
+			error("Property do not exist on location " + locationName, localVariable,
 						MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);
+		}else{
+			// Loop over all object names on object
+			var matchPropertyName = false
+			for (LocationDeclaration locationDeclaration: location.declarations) {
+				// Check if there is a match
+				if (locationDeclaration.name == locationName) {
+					for (Property property : location.properties) {
+						if (property.name == propertyName) {
+							matchPropertyName = true
+						}
+					}
+					if (!matchPropertyName) {
+						error("Property do not exist on location " + locationName, localVariable,
+							MetaGameLanguagePackage.eINSTANCE.localVariable_Var_prop);
+					}
 				}
 			}
 		}
+		
+		
 	}
 	
 
@@ -385,7 +430,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 		for (ObjectDeclaration objectDeclaration : object.declarations) {
 			// Check if there is a match
 			if (objectDeclaration.name == objectName) {
-				System.out.println("object name exists: " + objectName)
+				//System.out.println("object name exists: " + objectName)
 				matchObjectName = true
 			}
 		}
@@ -479,13 +524,13 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 
 	/*****************************Helper methods**********************************/
 	// Helper method for: validateObjectProperty, validateGameFieldObjectProperty
-	def validateObjectProperty(Property property, Game game, String errorMessage) {
+	def validateObjectLocationProperty(Property property, Game game, String errorMessage) {
 		var vars = property.getVariables
 		for (Expression expression : vars) {
 			switch expression {
 				LocalVariable: {
 					// Do a look to see if the property exist on object
-					for (Declaration declaration : game.getDeclarations) {
+					for (Declaration declaration : game.getDeclarations) {				
 						declaration.validateFieldProperty(expression)
 					}
 				}
@@ -556,7 +601,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 					var localVariableKey = expression.var_local + "." + expression.var_prop.name // Agent2.path
 					if (seen.contains(localVariableKey)) {
 						if (!errorThrownOnThisEpression.contains(localVariableKey)) {
-							// System.out.println("1: validation failed " +localVariableKey )
+							 System.out.println("1: validation failed " +localVariableKey )
 							error("1: Circular reference on property " + parent, expression,
 								MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
 							// error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
@@ -569,7 +614,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 						// System.out.println("Add to seen list: " + localVariableKey)
 						seen.add(localVariableKey)
 						if (!validate(expression, key, seen)) {
-							// System.out.println("2: validation failed " +localVariableKey )
+							 System.out.println("2: validation failed " +localVariableKey )
 							if (!errorThrownOnThisEpression.contains(localVariableKey)) {
 								// error("2: Circular reference on property " + parent, localVariable ,MetaGameLanguagePackage.Literals.LOCAL_VARIABLE__VAR_PROP);
 								// error("Circular reference on object " + childLocalVariable.var_local, localVariable ,MetaGameLanguagePackage.eINSTANCE.localVariable_Var_local);
