@@ -40,15 +40,7 @@ import com.metagamedsl.individual.metaGameLanguage.LocationDeclaration
  */
 class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 
-	/*
-	 * number test = Agent1.path   
-	 * 
-	 * Validate on global properties
-	 * "path" property should then exist on Agent1 else fail
-	 * 
-	 * Method: validateObjectLocationProperty
-	 * 
-	 */
+
 	 
  	/*
 	 * number test = Agent1.path   
@@ -59,30 +51,26 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * Method: validateObjectLocationName
 	 * 
 	 */
-	 
+ 	/*
+	 * number test = Agent1.path   
+	 * 
+	 * Validate on global properties
+	 * "path" property should then exist on Agent1 else fail
+	 * 
+	 * Method: validateObjectLocationProperty
+	 * 
+	 */
 	@Check
-	def validateGameFieldObjectLocationProperty(Game game) {
+	def validateGameFieldObjectLocationNameProperty(Game game) {
 		// Loop all game properties
 		for (Property property : game.fields) {
 			// Get property variables e.g Agent1.score, Agent2.score
 			property.validateObjectLocationProperty(game, "validateGameFieldObjectProperty")
-			//property.validateObjectLocationName(game, "validateGameFieldObjectProperty")
-		}
-	}
-
-	/*
-	 * number test = Agent1.path   
-	 * 
-	 * Validate on global properties
-	 * Agent1 should exist
-	 */
-	@Check
-	def validateGameFieldObjectLocationName(Game game) {
-		for (Property property : game.fields) {
-			// Get property variables e.g Agent1.score, Agent2.score
 			property.validateObjectLocationName(game, "validateGameFieldObjectProperty")
 		}
 	}
+
+
 	/*
 	 * Game Labyrint   
 	 *	
@@ -98,7 +86,7 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	}
 
 	/*
-	 * 	Object Agent1 (0,0) Agent2(1,0)   
+	 * Object Agent1 (0,0) Agent2(1,0)   
 	 *     truth value isAgent = true     
 	 *   	number path = 0  
 	 * Object Agent3 (0,0)   
@@ -106,21 +94,13 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 *   	number path = Agent1.score
 	 * 
 	 * Validate on locale object properties
-	 * Agent1.score , score should exist on Agent1 properties  
+	 * Agent1.score , score should exist on Agent1 properties 
+	 * 
+	 * Method: validateObjectLocationProperty 
 	 * 
 	 */
-	@Check
-	def validateObjectLocationProperty(Game game) {
-		// Loop all game properties
-		for (Declaration declaration : game.declarations) {			
-			for (Property property : declaration.properties) {
-				property.validateObjectLocationProperty(game, "validateObjectProperty")
-			}
-		}
-	}
-	
-	/*
-	 * 	Object Agent1 (0,0) Agent2(1,0)   
+ 	/*
+	 * Object Agent1 (0,0) Agent2(1,0)   
 	 *     truth value isAgent = true     
 	 *   	number path = Agent1111.path 
 	 * Object Agent3 (0,0)   
@@ -130,16 +110,21 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * Validate on locale object names
 	 * Agent1111.path, if Agent1111 do not exist, throw error
 	 * 
+	 * Method: validateObjectLocationName
+	 * 
 	 */
 	@Check
-	def validateObjectLocationName(Game game) {
+	def validateObjectLocationNameProperty(Game game) {
 		// Loop all game properties
-		for (Declaration declaration : game.declarations) {
+		for (Declaration declaration : game.declarations) {			
 			for (Property property : declaration.properties) {
-					property.validateObjectLocationName(game, "validateObjectLocationNameShouldExistOnLocalVariable")
+				property.validateObjectLocationProperty(game, "validateObjectLocationProperty")
+				property.validateObjectLocationName(game, "validateObjectLocationName")
 			}
 		}
 	}
+	
+
 	
 	/*
 	 * E.g.: Object Agent1 (0,0) Agent1(1,0)   
@@ -149,11 +134,20 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 	 * 	Object names should be unique
 	 * 
 	 */
+ 	/*
+	 * Object Agent1 (0,0) Agent2(1,0)   
+	 *     truth value isAgent = true  
+	 *     truth value isAgent = true    
+	 *   	number path = 0
+	 * 
+	 * Two properties with same name should not be allowed
+	 */
 	@Check
-	def validateDuplicateObjectLocationNames(Game game) {
+	def validateDuplicateObjectLocationNameProperty(Game game) {
 		var List<String> seenObjectList = new ArrayList()
 		var List<String> seenLocationList = new ArrayList()
 		for (Declaration declaration : game.getDeclarations) {
+			declaration.validateProperty			
 			switch declaration {
 				Object: {
 					for (ObjectDeclaration objectDeclaration : declaration.declarations) {
@@ -175,27 +169,9 @@ class MetaGameLanguageValidator extends AbstractMetaGameLanguageValidator {
 						}
 					}
 				}
-				default:
-					throw new Error("Invalid expression in method chekObjectProperty")
 			}
 		}
 	}
-
-	/*
-	 * Object Agent1 (0,0) Agent2(1,0)   
-	 *     truth value isAgent = true  
-	 *     truth value isAgent = true    
-	 *   	number path = 0
-	 * 
-	 * Two properties with same name should not be allowed
-	 */
-	@Check
-	def validateDuplicateProperty(Game game) {
-		for (Declaration declaration : game.getDeclarations) {
-			declaration.validateProperty;
-		}
-	}
-
 
 	/*
 	 * Steps in the procedure:
