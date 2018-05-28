@@ -360,10 +360,7 @@ public class «game.name» extends FluentMachine {
 			}
 		}
 	
-	'''«IF f.not !== null»!«ENDIF»_iInternalFunction.«f.internal_name»(«FOR arg:names SEPARATOR ', '»«arg»«ENDFOR»);'''
-	
-	//'''«IF f.not !== null»!«ENDIF» _iInternalFunction.«f.internal_name»(«FOR arg:f.arguments?.arguments SEPARATOR ', '»model.get«arg.name.getDeclarationType(declarations)»("«arg.name»")«ENDFOR»)'''
-	 
+	'''«IF f.not !== null»!«ENDIF»_iInternalFunction.«f.internal_name»(«FOR arg:names SEPARATOR ', '»«arg»«ENDFOR»);'''	 
 	}
 
 	// Generates Winning state proposition condition
